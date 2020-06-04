@@ -1,0 +1,108 @@
+entry: (top | _NL)*
+
+// --- Toplevel ---------------------------------------------
+
+?top: function
+  | object
+  | bind
+  | case
+  | expr _NL
+
+function: "fn" NAME pattern ("->" (expr _NL | block) | _NL)
+bind: NAME "=" expr _NL
+
+case: "case" expr case_block ["else" block]
+variant: expr "=>" (expr _NL | block)
+case_block: _NL _INDENT variant+ _DEDENT
+
+// One can set a property only in an object.
+object: "obj" OBJECT NAME* ("->" (unique_block{property} | expr _NL) | _NL)
+property: "." NAME "=" expr _NL
+
+// --- Patterns ---------------------------------------------
+
+?pattern: value_pattern
+  | ["consume"] item_pattern ("," item_pattern)+ -> p_items
+
+?item_pattern: value_pattern
+  | "+" value_pattern -> p_one_more
+  | "*" value_pattern -> p_zero_more
+  | "*" -> p_discard_many
+
+?value_pattern: p_guard
+  | NAME -> p_req
+  | NUM "-" NUM -> p_of_nums
+  | STR "-" STR -> p_of_strs
+  | REGEX -> p_regex
+  | OBJECT -> p_is_instance
+  | "(" OBJECT (NAME | "|" pattern "|")+ ")" -> p_unpack
+  | data -> p_cmp
+  | "_" -> p_discard
+  | NAME ":" value_pattern -> p_assign_p
+  | ("(" pattern ")" | NAME) "=" expr -> p_assign_if 
+  | "(" pattern ")"
+
+!p_guard: NAME ("is""not"|"not"("of"|"in")|"in"|"of"|"is"|"<"|"<="|">"|">=") add [("and"|"or") expr] 
+
+// --- Toplevel utility -------------------------------------
+
+// Unique block accepts a rule that can be used only within it.
+?unique_block{unique}: _NL _INDENT (top | unique)+ _DEDENT -> block
+block: _NL _INDENT top+ _DEDENT
+
+// --- Expressions ------------------------------------------
+
+!?expr: not
+  | expr ("and"|"or") not -> infix
+!?not: equ
+  | "not" not -> prefix
+!?equ: add
+  | add (("<"|">"|"<="|">=") add)+ -> cmpfix
+  | equ ("is""not"|"not"("of"|"in")|"in"|"of"|"is") add -> infix
+!?add: mul
+  | add ("+"|"-") mul -> infix
+!?mul: pow
+  | mul ("*"|"/"|"mod") pow -> infix
+!?pow: unary
+  | unary "^" pow -> infix
+!?unary: instance
+  | ("+"|"-") unary -> prefix
+?instance: call
+  | OBJECT atom* -> instance
+?call: call? atom
+
+// --- Data types -------------------------------------------
+
+?atom: data
+  | NAME -> req
+  | atom "." NAME -> field
+  | "_" -> contextual
+  | "(" expr ")"
+
+?data: NUM -> num
+  | STR -> str
+  | "[" atom* "]" -> vec
+
+// --- Tokens ------------------------------------------------
+
+NAME: /[a-z][a-zA-Z0-9\-_]*(?<!\-)[?!]?/
+OBJECT: /[A-Z][a-zA-Z0-9\-_]*(?<!\-)/
+
+STR: /"([^\n"\\]|\\[nrtv"'\\])*"/
+REGEX: /`([^`\\]|\\(`|.))*`/
+
+NUM: HEX | OCT | BIN | FLOAT | DEC
+DEC: /[1-9][0-9]*|0/
+FLOAT: /[0-9]*\.[0-9]+/
+HEX.2: /0x[0-9A-Fa-f]+/
+OCT.2: /0o[0-7]+/
+BIN.2: /0b[01]+/
+
+_NL: (/\r?\n[\t ]*/ | COMMENT)+
+COMMENT: /\\[^\n]*/
+
+%import common.WS_INLINE
+%ignore WS_INLINE
+%ignore COMMENT
+
+%declare _INDENT _DEDENT

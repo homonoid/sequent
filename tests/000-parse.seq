@@ -1,0 +1,198 @@
+\ Comments start with a backslash and continue up to the end of the line.
+\ They are ignored completely.
+
+\ --- Numbers ----------------------------
+
+1
+12
+1234
+123.456
+
+0x0123456789AbCdEf
+0o01234567
+0b010101010
+
+\ --- Strings ----------------------------
+
+"Strings start and end with double quotes"
+"They may \"contain\" escapes, such as \n and \t"
+
+\ --- Names ------------------------------
+\ Names must start with a lowercase letter.
+
+foo
+foo_bar
+foo-bar-baz
+aGoodName
+a-nice-name
+my-name_isBad-thoughWorking-12345
+
+\ --- Vectors ----------------------------
+
+[1 2 3]
+[a b c]
+["hello" 1 "world" foo bar]
+
+\ --- Calls ------------------------------
+\ Calls accept only one argument.
+
+name 1
+a b c
+
+name 1 2
+\\ ^-- this one is identical to the one below
+
+(name 1) 2
+
+\ --- Expressions ------------------------
+
+2 + 2
+2 + 2 * 2
+2 + 2 * 2 / 2
+2 + 2 * 2 / 2 ^ 2
+5 mod 7
+
+a and b or not c
+1 is not 3 is true
+1 not of str is false
+1 in [1 2 3] and 5 is 6
+1 not in [5 6 7]
+
+1 < 2
+2 > 3
+
+1 <= 2
+2 >= 3
+
+\ Multiple comparsion.
+1 > 2 < 3
+1 < 2 <= 3
+
+-12
+--12
++-12
+-(-12)
+-[1 2 3]
+
+\ --- Bindings ---------------------------
+
+neg-pi = -3.14
+name = "John Doe"
+choices = ["Listen" "Forget" "Go away"]
+
+\ --- Objects ----------------------------
+
+obj Person name age
+\ obj Person name age (str, num < 100)
+
+\ Object with instantiator.
+
+obj Person name age ->
+  debug "object Person with name $name, age $age was created."
+
+\ Object with instantiator and dot bindings:
+
+obj Square size ->
+  .width = size
+  .height = size
+
+\ Instantiation of an object.
+
+p = Person "John Doe" 58
+s = Square 20
+
+\ Accessing the fields:
+
+say p.name p.age
+say s.width s.height s.size
+
+\ --- Case statements --------------------
+
+name = "John Doe"
+age = 58
+birthday = false
+
+case name is "John Doe" and age
+  18 => say "John Doe, you are young"
+  24 =>
+    say "John Doe, hello!"
+    say "John Doe, you can drink!"
+  58 and fun =>
+    say "Happy birthday"
+  100 and not fun => say "Huh..."
+else
+  say "You are someone else, stranger!!!"
+
+\ --- Functions --------------------------
+\ The toughest part of the grammar begins.
+
+\ Basic functions:
+
+fn id a -> a
+fn greet name -> say "Hello, $name"
+
+\ Basic functions with blocks:
+
+fn print item ->
+  say item
+  print
+
+\ Identity matchers:
+
+\ Bare identity:
+
+fn foo 1 -> 1
+fn bar "stringy string" -> true
+fn baz [1 2 "vector"] -> 1
+
+\ Ignores:
+
+fn a _ -> true
+
+\ Types:
+
+fn foo num -> "Type num matched!"
+fn bar str -> "Type str matched!"
+fn baz vec -> "Type vec matched, hey!"
+
+\ Regex:
+
+fn grok `[0-9]+` -> "regex number matched!"
+fn grok `[a-z][a-zA-Z\`\-]+` -> "regex name matched!"
+
+\ Ranges:
+
+fn is-num 0-9 -> true 
+fn is-digit "0"-"9" -> true
+
+\ Guessers:
+
+fn of-foo x in ["foo" "foo_bare" "foo_baze"] -> true
+fn not-of-foo x not in ["foo" "foo_bare" "foo_baze"] -> false
+
+fn is-in-range a < 30 and a > 5 -> true
+
+fn is-true x is true -> true
+
+\ Vector matchers:
+
+fn add-three-item-list x, y, z -> x + y + z
+fn head-tail h, *, t -> [h t]
+
+fn car x, * -> x
+fn cdr _, xs -> xs
+
+fn named-middle a, +b, c -> [a b c]
+
+\ Object unpacking:
+
+fn eval (Num value) -> value
+fn eval (Unary op |(Num value)|) ->
+  case op
+    "+" => +value
+    "-" => -value
+
+\ General patterns:
+
+fn general x: 1 -> x
+fn general x = is-num -> x
