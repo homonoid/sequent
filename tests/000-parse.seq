@@ -83,7 +83,7 @@ choices = ["Listen" "Forget" "Go away"]
 \ --- Objects ----------------------------
 
 obj Person name age
-\ obj Person name age (str, num < 100)
+obj Person name age (str, num < 100)
 
 \ Object with instantiator.
 
@@ -162,8 +162,8 @@ fn grok `[a-z][a-zA-Z\`\-]+` -> "regex name matched!"
 
 \ Ranges:
 
-fn is-num 0-9 -> true 
-fn is-digit "0"-"9" -> true
+fn is-num 0..9 -> true 
+fn is-digit "0".."9" -> true
 
 \ Guessers:
 
@@ -180,19 +180,38 @@ fn add-three-item-list x, y, z -> x + y + z
 fn head-tail h, *, t -> [h t]
 
 fn car x, * -> x
-fn cdr _, xs -> xs
+fn cdr _, +xs -> xs
 
 fn named-middle a, +b, c -> [a b c]
 
 \ Object unpacking:
 
 fn eval (Num value) -> value
-fn eval (Unary op |(Num value)|) ->
+fn eval (Unary op #{(Num value)}) ->
   case op
     "+" => +value
     "-" => -value
 
 \ General patterns:
 
-fn general x: 1 -> x
+fn general x: [a b c] -> [x a b c]
 fn general x = is-num -> x
+
+\ --- Index ------------------------------
+
+choices = ["Choice A" "Choice B" "Choice C"]
+say choices:0
+say choices:(-1)
+
+\ --- Range ------------------------------
+
+numbers = 1..(-1000)
+say numbers:100
+
+\ --- Needs ------------------------------
+
+needs IO
+needs Prelude
+needs File
+needs Python
+needs foo-bar-baz

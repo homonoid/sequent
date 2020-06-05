@@ -11,18 +11,18 @@ fn lex _ -> die "Invalid syntax."
 fn parse consume (Operator op), (Number val), * -> Prefix op val
 fn parse consume *, (Operator op), * -> Binary op (parse left) (parse right)
 
-fn eval (Prefix op |val=eval _|) ->
+fn eval (Prefix op #{val=eval _}) ->
   case op
     "-" => -val
     "+" => +val
   else
     die "invalid prefix"
 
-fn eval (Binary op |(lhs, rhs)=eval _|) ->
+fn eval (Binary op #{(lhs, rhs)=eval _}) ->
   case op
     "+" => lhs + rhs
     "-" => lhs - rhs
     "*" => lhs * rhs
     "/" => lhs / rhs
 
-eval (apply (apply (read) lex) parse)
+eval (apply (apply read lex) parse)

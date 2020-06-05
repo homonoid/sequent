@@ -1,56 +1,57 @@
 entry: (top | _NL)*
 
-// --- Toplevel ---------------------------------------------
+// --- Top-level ----------------------
 
 ?top: function
   | object
+  | needs
   | bind
   | case
   | expr _NL
 
+// Functions can be bodyless.
 function: "fn" NAME pattern ("->" (expr _NL | block) | _NL)
+
 bind: NAME "=" expr _NL
+
+needs: "needs" (NAME | OBJECT) _NL
 
 case: "case" expr case_block ["else" block]
 variant: expr "=>" (expr _NL | block)
 case_block: _NL _INDENT variant+ _DEDENT
 
-// One can set a property only in an object.
-object: "obj" OBJECT NAME* ("->" (unique_block{property} | expr _NL) | _NL)
-property: "." NAME "=" expr _NL
+// Object's fields can be set only in the object's block.
+object: "obj" OBJECT NAME* ["(" pattern ")"] ("->" (object_block | expr _NL) | _NL)
+set_field: "." NAME "=" expr _NL
+object_block: _NL _INDENT (top | set_field)+ _DEDENT
 
-// --- Patterns ---------------------------------------------
+block: _NL _INDENT top+ _DEDENT
+
+// --- Patterns -----------------------
 
 ?pattern: value_pattern
-  | ["consume"] item_pattern ("," item_pattern)+ -> p_items
+  | [CONSUME] item_pattern ("," item_pattern)+ -> p_list_items
 
 ?item_pattern: value_pattern
-  | "+" value_pattern -> p_one_more
-  | "*" value_pattern -> p_zero_more
+  | "+" value_pattern -> p_one_or_more
+  | "*" value_pattern -> p_zero_or_more
   | "*" -> p_discard_many
 
 ?value_pattern: p_guard
   | NAME -> p_req
-  | NUM "-" NUM -> p_of_nums
-  | STR "-" STR -> p_of_strs
+  | (NUM ".." NUM | STR ".." STR) -> p_in_range
   | REGEX -> p_regex
-  | OBJECT -> p_is_instance
-  | "(" OBJECT (NAME | "|" pattern "|")+ ")" -> p_unpack
-  | data -> p_cmp
+  | OBJECT -> p_instanceof
+  | "(" OBJECT (NAME | "#{" value_pattern "}")+ ")" -> p_unpack
+  | data -> p_compare
   | "_" -> p_discard
-  | NAME ":" value_pattern -> p_assign_p
-  | ("(" pattern ")" | NAME) "=" expr -> p_assign_if 
+  | NAME ":" value_pattern -> p_remember_whole
+  | ("(" pattern ")" | NAME) "=" expr -> p_remember_whole_expr
   | "(" pattern ")"
 
 !p_guard: NAME ("is""not"|"not"("of"|"in")|"in"|"of"|"is"|"<"|"<="|">"|">=") add [("and"|"or") expr] 
 
-// --- Toplevel utility -------------------------------------
-
-// Unique block accepts a rule that can be used only within it.
-?unique_block{unique}: _NL _INDENT (top | unique)+ _DEDENT -> block
-block: _NL _INDENT top+ _DEDENT
-
-// --- Expressions ------------------------------------------
+// --- Expressions --------------------
 
 !?expr: not
   | expr ("and"|"or") not -> infix
@@ -68,10 +69,15 @@ block: _NL _INDENT top+ _DEDENT
 !?unary: instance
   | ("+"|"-") unary -> prefix
 ?instance: call
-  | OBJECT atom* -> instance
-?call: call? atom
+  | OBJECT index* -> instance
+?call: call? index
 
-// --- Data types -------------------------------------------
+// Range and index share the same precedence level.
+// Is this the right way, though?
+!?index: atom
+  | index (":" | "..") atom -> infix
+
+// --- Data types ---------------------
 
 ?atom: data
   | NAME -> req
@@ -79,11 +85,15 @@ block: _NL _INDENT top+ _DEDENT
   | "_" -> contextual
   | "(" expr ")"
 
+// TODO: list (vector) comprehension.
+
 ?data: NUM -> num
   | STR -> str
   | "[" atom* "]" -> vec
 
-// --- Tokens ------------------------------------------------
+// --- Tokens -------------------------
+
+CONSUME.2: "consume"
 
 NAME: /[a-z][a-zA-Z0-9\-_]*(?<!\-)[?!]?/
 OBJECT: /[A-Z][a-zA-Z0-9\-_]*(?<!\-)/
